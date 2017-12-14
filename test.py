@@ -26,41 +26,59 @@ import cv2
 import numpy as np
 import selectivesearch
 import time
-
-img = cv2.imread('/home/dzy/local/traffic_Signs/Img/00227.jpg')
+from skimage.feature import canny
+i = 856
+img = cv2.imread('/home/dzy/local/traffic_Signs/Img/%05d.jpg'%i)
+# cv2.imwrite('0.jpg',img)
+imgRes = img.copy()
 img2 = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 mask_1 = np.logical_and(img2[:,:,0]>77, img2[:,:,0]<125)
 mask_2 = np.logical_and(img2[:,:,1]>43, img2[:,:,2]>46)
 mask = np.logical_and(mask_1, mask_2)
 binary_img = np.zeros_like(mask, dtype=np.uint8)
 binary_img[mask] = 255
-cv2.imshow('123', binary_img)
-cv2.waitKey(0)
+masknot = np.logical_not(mask)
+img[masknot] = (0,0,0)
+# cv2.imwrite('afterHSV.jpg', img)
 # kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (1,1))
 # opened = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN,kernel)
 # closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
+# cv2.imwrite('0_2.jpg',binary_img)
 kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (10,10))
 opened = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN,kernel)
+# cv2.imwrite('afterOpen.jpg', opened)
 closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
 kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (15,15))
+# cv2.imwrite('afterClose.jpg', closed)
 closed = cv2.morphologyEx(closed, cv2.MORPH_CLOSE, kernel)
+cv2.imwrite('after2Close.jpg', closed)
 cv2.imshow('123', closed)
 cv2.waitKey(0)
-imgRes = img.copy()
 mask2 = np.logical_not(closed)
-imgRes[mask2] = (0,0,0)
+# imgRes[mask2] = (0,0,0)
 contours, hierarchy = cv2.findContours(closed,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)  
 for cnt in contours:
     x,y,w,h = cv2.boundingRect(cnt)
     if w<50 and h<50: continue
+    img = cv2.imread('/home/dzy/local/traffic_Signs/Img/%05d.jpg'%i,0)
+    roi = img[y:y+h,x:x+w]
+    print roi.shape
+    tmp = np.zeros_like(roi)
+    cannyFeature = canny(roi)
+    tmp[cannyFeature] = 1
+    cnt = np.sum(tmp)
+    if cnt < 100: continue
     cv2.rectangle(imgRes, (x,y), (x+w,y+h), (0,255,0),2)
+for anno in getAnno('/home/dzy/local/traffic_Signs/Anno/%05d.xml'%i):
+    cv2.rectangle(imgRes, (anno[0], anno[1]), (anno[2], anno[3]), (255,255,255),2)
 print len(contours)
 cv2.drawContours(imgRes,contours[1],-1,(0,0,255),3)  
-cnt = contours[14]
-epsilon = 0.1*cv2.arcLength(cnt, True)
-approx = cv2.approxPolyDP(cnt, epsilon, True)
+# cnt = contours[14]
+# epsilon = 0.1*cv2.arcLength(cnt, True)
+# approx = cv2.approxPolyDP(cnt, epsilon, True)
 cv2.imshow('123', imgRes)
 cv2.waitKey(0)
+cv2.imwrite('result.jpg', imgRes)
 # img_lbl, regions = selectivesearch.selective_search(imgRes, scale=5, sigma=0.9, min_size=100)
 # candidates = set()
 # for r in regions:
